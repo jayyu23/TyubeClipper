@@ -2,10 +2,11 @@ import functools
 import tkinter as tk
 from concurrent import futures
 from tkinter.filedialog import asksaveasfilename
+from tkinter.ttk import Progressbar
 
 import converter as cv
 
-VERSION = 0.1
+VERSION = 0.2
 
 thread_pool_executor = futures.ThreadPoolExecutor(max_workers=1)
 
@@ -33,17 +34,17 @@ def submit_to_pool_executor(executor):
 def on_progress(stream, chunk, bytes_remaining):
     total_size = stream.filesize
     bytes_downloaded = total_size - bytes_remaining
-    complete_pct = bytes_downloaded / total_size
-    comp_txt = f"Download Progress: {round(complete_pct * 100, 2)}%"
+    complete_pct = round((bytes_downloaded / total_size) * 100, 2)
+    comp_txt = f"Download Progress: {complete_pct}%"
     main_frame.set_result_label(comp_txt)
+    main_frame.update_determinate_pbar(complete_pct)
     print(comp_txt)
-
 
 class MainFrame(tk.Frame):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.master.geometry('550x200')
+        self.master.geometry('600x250')
         self.master.title(f'Tyube Clipper v{VERSION}')
         self.options = {'padx': 5, 'pady': 5}
         self.yt_vid = None
@@ -83,18 +84,39 @@ class MainFrame(tk.Frame):
         self.result_label = tk.Label(self.master)
         self.result_label.grid(row=4, columnspan=3, **self.options)
 
+        # Row 5 - Progress Bar
+        self.progress_bar = None
+
     @tk_after
     def set_result_label(self, text):
         self.result_label.config(text=text)
+
+    @tk_after
+    def set_indeterminate_pbar(self):
+        self.progress_bar = Progressbar(self.master, length=150, mode="indeterminate")
+        self.progress_bar.grid(row=5, column=1)
+        self.progress_bar.start()
+
+    @tk_after
+    def setup_determinate_pbar(self):
+        self.progress_bar = Progressbar(self.master, length=150, mode="determinate")
+        self.progress_bar['value'] = 0
+        self.progress_bar.grid(row=5, column=1)
+
+    @tk_after
+    def update_determinate_pbar(self, value):
+        self.progress_bar['value'] = value
 
     @submit_to_pool_executor(thread_pool_executor)
     def convert_button_clicked(self):
         l = self.link.get()
         mode = self.mode_opt.get()
         self.set_result_label("Fetching from source... Please wait")
+        self.set_indeterminate_pbar()
         self.yt_vid = cv.convert_youtube(l, on_progress, mode)
         result = f'{self.yt_vid.title}\nFile size: {self.yt_vid.filesize * 10 ** -6:.3f} MB'
         self.set_result_label(result)
+        self.setup_determinate_pbar()
 
     @submit_to_pool_executor(thread_pool_executor)
     def download_button_clicked(self):
