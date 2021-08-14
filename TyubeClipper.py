@@ -10,6 +10,7 @@ VERSION = 0.2
 
 thread_pool_executor = futures.ThreadPoolExecutor(max_workers=1)
 
+# pyinstaller --windowed --icon "Video.icns" TyubeClipper.py
 
 def tk_after(target):
     @functools.wraps(target)

@@ -7,7 +7,9 @@ chunk_size = 1024
 
 def convert_youtube(yt_link, on_progress, mode):
     yt = YouTube(yt_link)
-    yt_vid = yt.streams.filter(only_audio=(mode == "audio"), only_video=(mode == "video"))[0]
+    yt_vid = yt.streams.filter(progressive=True, file_extension='mp4',
+                               only_audio=(mode == "audio"), only_video=(mode == "video"))\
+                        .order_by('resolution').first()
     yt.register_on_progress_callback(on_progress)
     return yt_vid
 
